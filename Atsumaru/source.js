@@ -381,7 +381,7 @@ const HOME_TYPES = 'types=Manga%2CManwha%2CManhua%2COEL%2COther&mediums=Comic';
 const HOME_FILTERS_REGULAR = `${HOME_TYPES}&contentRatings=Safe%2CSuggestive%2CErotica`;
 const HOME_FILTERS_ADULT = `${HOME_TYPES}&contentRatings=Safe%2CSuggestive%2CErotica%2CPornographic&adult=1`;
 exports.AtsumaruInfo = {
-    version: '1.0.0',
+    version: '1.0.1',
     name: 'Atsumaru',
     icon: 'icon.png',
     author: 'whaleshabob',
@@ -450,13 +450,21 @@ class Atsumaru extends paperback_extensions_common_1.Source {
             return `${BASE_URL}/images/banner.png`;
         return `${CDN_URL}${path.startsWith('/') ? '' : '/'}${path}`;
     }
+    /**
+     * Builds a tile. The app's native side is strict about types (a number where a
+     * string is expected can crash it), so every value is coerced to the right type here.
+     */
     makeTile(id, title, image, rating, views) {
+        const ratingNum = Number(rating);
+        const viewsText = views === undefined || views === null ? '' : String(views);
         return createMangaTile({
-            id,
-            image,
-            title: createIconText({ text: title }),
-            subtitleText: views ? createIconText({ text: views, icon: 'eye.fill' }) : undefined,
-            primaryText: rating ? createIconText({ text: rating.toFixed(1), icon: 'star.fill' }) : undefined,
+            id: String(id),
+            image: String(image),
+            title: createIconText({ text: String(title !== null && title !== void 0 ? title : '') }),
+            subtitleText: viewsText ? createIconText({ text: viewsText, icon: 'eye.fill' }) : undefined,
+            primaryText: Number.isFinite(ratingNum) && ratingNum > 0
+                ? createIconText({ text: ratingNum.toFixed(1), icon: 'star.fill' })
+                : undefined,
         });
     }
     homeUrl(section, offset) {
@@ -618,7 +626,7 @@ class Atsumaru extends paperback_extensions_common_1.Source {
         if (!text)
             url += `&sort_by=${encodeURIComponent('views:desc')}`;
         const result = await this.getJSON(url);
-        const tiles = ((_c = result.hits) !== null && _c !== void 0 ? _c : []).map(({ document: d }) => this.makeTile(d.id, d.title, this.searchImage(d), d.mbRating, d.views));
+        const tiles = ((_c = result.hits) !== null && _c !== void 0 ? _c : []).map(({ document: d }) => this.makeTile(d.id, d.title, this.searchImage(d), d.mbRating, d.popularity));
         const hasMore = page * SEARCH_PAGE_SIZE < result.found;
         return createPagedResults({ results: tiles, metadata: hasMore ? { page: page + 1 } : undefined });
     }
